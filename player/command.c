@@ -791,7 +791,9 @@ static int mp_property_slave_time(void *ctx, struct m_property *prop,
         mpctx->slave_pts = *(double *)arg;
         return M_PROPERTY_OK;
     }
-    return mpctx->slave_pts;
+
+    *(double *)arg = mpctx->slave_pts;
+    return M_PROPERTY_OK;
 }
 
 /// Current audio pts in seconds (R)
@@ -3785,7 +3787,7 @@ static const char *const *const mp_event_property_change[] = {
     E(MP_EVENT_TRACKS_CHANGED, "track-list", "current-tracks"),
     E(MP_EVENT_TRACK_SWITCHED, "track-list", "current-tracks"),
     E(MPV_EVENT_IDLE, "*"),
-    E(MPV_EVENT_TICK, "time-pos", "audio-pts", "stream-pos", "avsync",
+    E(MPV_EVENT_TICK, "time-pos", "audio-pts", "slave-time", "stream-pos", "avsync",
       "percent-pos", "time-remaining", "playtime-remaining", "playback-time",
       "estimated-vf-fps", "drop-frame-count", "vo-drop-frame-count",
       "total-avsync-change", "audio-speed-correction", "video-speed-correction",
