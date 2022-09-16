@@ -787,13 +787,14 @@ static int mp_property_slave_time(void *ctx, struct m_property *prop,
                                       int action, void *arg)
 {
     MPContext *mpctx = ctx;
+    if (!mpctx->playback_initialized)
+        return M_PROPERTY_UNAVAILABLE;
+        
     if (action == M_PROPERTY_SET) {
         mpctx->slave_pts = *(double *)arg;
         return M_PROPERTY_OK;
     }
-
-    *(double *)arg = mpctx->slave_pts;
-    return M_PROPERTY_OK;
+    return property_time(action, arg, mpctx->slave_pts);
 }
 
 /// Current audio pts in seconds (R)
@@ -3598,6 +3599,7 @@ static const struct m_property mp_properties_base[] = {
     {"percent-pos", mp_property_percent_pos},
     {"time-start", mp_property_time_start},
     {"time-pos", mp_property_time_pos},
+    {"slave-time", mp_property_slave_time},
     {"time-remaining", mp_property_remaining},
     {"audio-pts", mp_property_audio_pts},
     {"playtime-remaining", mp_property_playtime_remaining},
@@ -3680,7 +3682,6 @@ static const struct m_property mp_properties_base[] = {
     {"vid", property_switch_track, .priv = (void *)(const int[]){0, STREAM_VIDEO}},
     {"hwdec-current", mp_property_hwdec_current},
     {"hwdec-interop", mp_property_hwdec_interop},
-    {"slave-time", mp_property_slave_time},
 
     {"estimated-frame-count", mp_property_frame_count},
     {"estimated-frame-number", mp_property_frame_number},
