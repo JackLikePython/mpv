@@ -112,6 +112,7 @@ void reset_video_state(struct MPContext *mpctx)
     mpctx->delay = 0;
     mpctx->time_frame = 0;
     mpctx->video_pts = MP_NOPTS_VALUE;
+    mpctx->slave_pts = MP_NOPTS_VALUE;
     mpctx->last_frame_duration = 0;
     mpctx->num_past_frames = 0;
     mpctx->total_avsync_change = 0;
@@ -636,7 +637,13 @@ static void update_av_diff(struct MPContext *mpctx, double offset)
         return;
 
     double a_pos = playing_audio_pts(mpctx);
-    if (a_pos != MP_NOPTS_VALUE && mpctx->video_pts != MP_NOPTS_VALUE) {
+
+    if (a_pos != MP_NOPTS_VALUE && mpctx->slave_pts != MP_NOPTS_VALUE)
+    {
+        mpctx->last_av_difference = a_pos - mpctx->slave_pts
+                                  + opts->audio_delay + offset;
+    }
+    else if (a_pos != MP_NOPTS_VALUE && mpctx->video_pts != MP_NOPTS_VALUE) {
         mpctx->last_av_difference = a_pos - mpctx->video_pts
                                   + opts->audio_delay + offset;
     }

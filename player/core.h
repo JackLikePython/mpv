@@ -358,6 +358,8 @@ typedef struct MPContext {
     /* timestamp of video frame currently visible on screen
      * (or at least queued to be flipped by VO) */
     double video_pts;
+    //来自于其他设备的时间
+    double slave_pts;
     // Last seek target.
     double last_seek_pts;
     // Frame duration field from demuxer. Only used for duration of the last
