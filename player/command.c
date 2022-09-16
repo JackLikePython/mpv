@@ -788,8 +788,6 @@ static int mp_property_slave_time(void *ctx, struct m_property *prop,
                                       int action, void *arg)
 {
     MPContext *mpctx = ctx;
-    if (!mpctx->playback_initialized)
-        return M_PROPERTY_UNAVAILABLE;
 
     if (action == M_PROPERTY_SET) {
         mpctx->slave_pts = *(double *)arg;
