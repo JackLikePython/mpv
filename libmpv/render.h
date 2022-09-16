@@ -1,5 +1,5 @@
 /* Copyright (C) 2018 the mpv developers
- *
+ * 主要就是看看是不是用的新的代碼發佈出來的
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
