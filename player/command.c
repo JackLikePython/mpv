@@ -788,13 +788,14 @@ static int mp_property_slave_time(void *ctx, struct m_property *prop,
 {
     MPContext *mpctx = ctx;
     MP_VERBOSE(mpctx, "action = %d\n", action);
-    return M_PROPERTY_OK;
 
     if (!mpctx->playback_initialized)
         return M_PROPERTY_UNAVAILABLE;
 
     switch (action) {
-    case M_PROPERTY_SET: {
+    case M_PROPERTY_SET: 
+    //case M_PROPERTY_SET_NODE:
+    {
         double pos = *(double *)arg;
         mpctx->slave_pts = pos;
         return M_PROPERTY_OK;
@@ -805,11 +806,8 @@ static int mp_property_slave_time(void *ctx, struct m_property *prop,
         return M_PROPERTY_OK;
     }
     case M_PROPERTY_GET_TYPE:
-        *(struct m_option *)arg = (struct m_option){
-            .type = CONF_TYPE_DOUBLE,
-            .min = 0,
-            .max = 100,
-        };
+        struct m_option time_type = {.type = CONF_TYPE_DOUBLE};
+        *(struct m_option *)arg = time_type;
         return M_PROPERTY_OK;
     case M_PROPERTY_PRINT: {
         double pos = *(double *)arg;
@@ -818,14 +816,6 @@ static int mp_property_slave_time(void *ctx, struct m_property *prop,
     }
     }
     return M_PROPERTY_NOT_IMPLEMENTED;
-
-
-
-    // if (action == M_PROPERTY_SET) {
-    //     mpctx->slave_pts = *(double *)arg;
-    //     return M_PROPERTY_OK;
-    // }
-    // return property_time(action, arg, mpctx->slave_pts);
 }
 
 /// Current audio pts in seconds (R)
