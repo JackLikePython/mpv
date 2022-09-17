@@ -787,33 +787,31 @@ static int mp_property_slave_time(void *ctx, struct m_property *prop,
                                       int action, void *arg)
 {
     MPContext *mpctx = ctx;
-    MP_VERBOSE(mpctx, "action = %d\n", action);
 
     if (!mpctx->playback_initialized)
         return M_PROPERTY_UNAVAILABLE;
 
     switch (action) {
-    case M_PROPERTY_SET: 
-    //case M_PROPERTY_SET_NODE:
-    {
-        double pos = *(double *)arg;
-        mpctx->slave_pts = pos;
-        return M_PROPERTY_OK;
-    }
-    case M_PROPERTY_GET: {
-        double pos = mpctx->slave_pts;
-        *(double *)arg = pos;
-        return M_PROPERTY_OK;
-    }
-    case M_PROPERTY_GET_TYPE:
-        struct m_option time_type = {.type = CONF_TYPE_DOUBLE};
-        *(struct m_option *)arg = time_type;
-        return M_PROPERTY_OK;
-    case M_PROPERTY_PRINT: {
-        double pos = *(double *)arg;
-        *(char **)arg = talloc_asprintf(NULL, "%lf", pos);
-        return M_PROPERTY_OK;
-    }
+        case M_PROPERTY_SET: {
+            double pos = *(double *)arg;
+            mpctx->slave_pts = pos;
+            return M_PROPERTY_OK;
+        }
+        case M_PROPERTY_GET: {
+            double pos = mpctx->slave_pts;
+            *(double *)arg = pos;
+            return M_PROPERTY_OK;
+        }
+        case M_PROPERTY_GET_TYPE: {
+            struct m_option time_type = {.type = CONF_TYPE_DOUBLE};
+            *(struct m_option *)arg = time_type;
+            return M_PROPERTY_OK;
+        }
+        case M_PROPERTY_PRINT: {
+            double pos = *(double *)arg;
+            *(char **)arg = talloc_asprintf(NULL, "%lf", pos);
+            return M_PROPERTY_OK;
+        }
     }
     return M_PROPERTY_NOT_IMPLEMENTED;
 }
