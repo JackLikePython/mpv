@@ -392,7 +392,6 @@ static int mp_property_playback_speed(void *ctx, struct m_property *prop,
                                       int action, void *arg)
 {
     MPContext *mpctx = ctx;
-    MP_VERBOSE(mpctx, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
     if (action == M_PROPERTY_PRINT) {
         double speed = mpctx->opts->playback_speed;
         *(char **)arg = talloc_asprintf(NULL, "%.2f", speed);
@@ -788,12 +787,45 @@ static int mp_property_slave_time(void *ctx, struct m_property *prop,
                                       int action, void *arg)
 {
     MPContext *mpctx = ctx;
+    MP_VERBOSE(mpctx, "action = %d\n", action);
+    return M_PROPERTY_OK;
 
-    if (action == M_PROPERTY_SET) {
-        mpctx->slave_pts = *(double *)arg;
+    if (!mpctx->playback_initialized)
+        return M_PROPERTY_UNAVAILABLE;
+
+    switch (action) {
+    case M_PROPERTY_SET: {
+        double pos = *(double *)arg;
+        mpctx->slave_pts = pos;
         return M_PROPERTY_OK;
     }
-    return property_time(action, arg, mpctx->slave_pts);
+    case M_PROPERTY_GET: {
+        double pos = mpctx->slave_pts;
+        *(double *)arg = pos;
+        return M_PROPERTY_OK;
+    }
+    case M_PROPERTY_GET_TYPE:
+        *(struct m_option *)arg = (struct m_option){
+            .type = CONF_TYPE_DOUBLE,
+            .min = 0,
+            .max = 100,
+        };
+        return M_PROPERTY_OK;
+    case M_PROPERTY_PRINT: {
+        double pos = *(double *)arg;
+        *(char **)arg = talloc_asprintf(NULL, "%lf", pos);
+        return M_PROPERTY_OK;
+    }
+    }
+    return M_PROPERTY_NOT_IMPLEMENTED;
+
+
+
+    // if (action == M_PROPERTY_SET) {
+    //     mpctx->slave_pts = *(double *)arg;
+    //     return M_PROPERTY_OK;
+    // }
+    // return property_time(action, arg, mpctx->slave_pts);
 }
 
 /// Current audio pts in seconds (R)
