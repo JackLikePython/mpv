@@ -629,24 +629,27 @@ static void update_av_diff(struct MPContext *mpctx, double offset)
 
     mpctx->last_av_difference = 0;
 
-    if (mpctx->audio_status != STATUS_PLAYING ||
-        mpctx->video_status != STATUS_PLAYING)
+    if (mpctx->video_status != STATUS_PLAYING)
+        return;
+
+    if (mpctx->video_pts == MP_NOPTS_VALUE && mpctx->audio_status != STATUS_PLAYING)
         return;
 
     if (mpctx->vo_chain && mpctx->vo_chain->is_sparse)
         return;
 
-    double a_pos = playing_audio_pts(mpctx);
-
-    if (a_pos != MP_NOPTS_VALUE && mpctx->slave_pts != MP_NOPTS_VALUE && mpctx->video_pts != MP_NOPTS_VALUE)
+    if (mpctx->slave_pts == MP_NOPTS_VALUE)
     {
-        mpctx->last_av_difference = mpctx->slave_pts - mpctx->video_pts
-                                  + opts->audio_delay + offset;
-        MP_VERBOSE(mpctx, "After Set slave—time, Do this , last_av_difference = %lf\n", mpctx->last_av_difference);
+        double a_pos = playing_audio_pts(mpctx);
+        if (a_pos != MP_NOPTS_VALUE && mpctx->video_pts != MP_NOPTS_VALUE) {
+            mpctx->last_av_difference = a_pos - mpctx->video_pts
+                + opts->audio_delay + offset;
+        }
     }
-    else if (a_pos != MP_NOPTS_VALUE && mpctx->video_pts != MP_NOPTS_VALUE) {
-        mpctx->last_av_difference = a_pos - mpctx->video_pts
-                                  + opts->audio_delay + offset;
+    else if (mpctx->video_pts != MP_NOPTS_VALUE)
+        mpctx->last_av_difference = mpctx->slave_pts - mpctx->video_pts
+            + opts->audio_delay + offset;
+        MP_VERBOSE(mpctx, "After Set slave—time, Do this , last_av_difference = %lf\n", mpctx->last_av_difference);
     }
 
     if (fabs(mpctx->last_av_difference) > 0.5 && !mpctx->drop_message_shown) {
