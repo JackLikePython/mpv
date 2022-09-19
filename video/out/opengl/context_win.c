@@ -1,4 +1,4 @@
-#define Scalable
+//#define Scalable
 /*
  * This file is part of mpv.
  *
@@ -361,7 +361,7 @@ static void wgl_uninit(struct ra_ctx *ctx)
 
     DwmEnableMMCSS(FALSE);
     vo_w32_uninit(ctx->vo);
-    
+
     #if defined(Scalable)
     EasyBlendSDKError msdkErr = EasyBlendSDK_Uninitialize(gMSDK);
     delete gMSDK;
