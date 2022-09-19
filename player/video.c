@@ -643,14 +643,12 @@ static void update_av_diff(struct MPContext *mpctx, double offset)
         double a_pos = playing_audio_pts(mpctx);
         if (a_pos != MP_NOPTS_VALUE && mpctx->video_pts != MP_NOPTS_VALUE) 
         {
-            mpctx->last_av_difference = a_pos - mpctx->video_pts
-                + opts->audio_delay + offset;
+            mpctx->last_av_difference = a_pos - mpctx->video_pts;
         }
     }
     else if (mpctx->video_pts != MP_NOPTS_VALUE)
     {
-        mpctx->last_av_difference = mpctx->slave_pts - mpctx->video_pts
-            + opts->audio_delay + offset;
+        mpctx->last_av_difference = mpctx->slave_pts - mpctx->video_pts + offset;
         MP_VERBOSE(mpctx, "After Set slave—time, Do this , last_av_difference = %lf\n", mpctx->last_av_difference);
     }
 
