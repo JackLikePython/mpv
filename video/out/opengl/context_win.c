@@ -24,7 +24,6 @@
 #include "context.h"
 #include "utils.h"
 #include "scalable/EasyBlendSDK.h"
-#pragma comment(lib,"scalable/mplEasyBlendSDK.lib" )
 #if !defined(WGL_CONTEXT_MAJOR_VERSION_ARB)
 /* these are supposed to be defined in wingdi.h but mingw's is too old */
 /* only the bits actually used by mplayer are defined */
