@@ -803,7 +803,7 @@ static void adjust_audio_resample_speed(struct MPContext *mpctx, double vsync)
 static void handle_display_sync_frame(struct MPContext *mpctx,
                                       struct vo_frame *frame)
 {
-    MP_VERBOSE("###1###\n");
+    MP_VERBOSE(mpctx, "###1###\n");
     struct MPOpts *opts = mpctx->opts;
     struct vo *vo = mpctx->video_out;
     int mode = vo->opts->video_sync;
@@ -818,7 +818,7 @@ static void handle_display_sync_frame(struct MPContext *mpctx,
     if (!VS_IS_DISP(mode))
         return;
         
-    MP_VERBOSE("###2###\n");
+    MP_VERBOSE(mpctx, "###2###\n");
     bool resample = mode == VS_DISP_RESAMPLE || mode == VS_DISP_RESAMPLE_VDROP ||
                     mode == VS_DISP_RESAMPLE_NONE;
     bool drop = mode == VS_DISP_VDROP || mode == VS_DISP_RESAMPLE ||
@@ -828,22 +828,22 @@ static void handle_display_sync_frame(struct MPContext *mpctx,
     if (resample && using_spdif_passthrough(mpctx))
         return;
 
-    MP_VERBOSE("###3###\n");
+    MP_VERBOSE(mpctx, "###3###\n");
     double vsync = vo_get_vsync_interval(vo) / 1e6;
     if (vsync <= 0)
         return;
 
-    MP_VERBOSE("###4###\n");
+    MP_VERBOSE(mpctx, "###4###\n");
     double adjusted_duration = MPMAX(0, mpctx->past_frames[0].approx_duration);
     adjusted_duration /= opts->playback_speed;
     if (adjusted_duration > 0.5)
         return;
 
-    MP_VERBOSE("###5###\n");
+    MP_VERBOSE(mpctx, "###5###\n");
     mpctx->speed_factor_v = 1.0;
     if (mode != VS_DISP_VDROP) {
         
-        MP_VERBOSE("###6###\n");
+        MP_VERBOSE(mpctx, "###6###\n");
         double best = find_best_speed(mpctx, vsync);
         // If it doesn't work, play at normal speed.
         if (fabs(best - 1.0) <= opts->sync_max_video_change / 100)
@@ -915,10 +915,10 @@ static void handle_display_sync_frame(struct MPContext *mpctx,
     mpctx->past_frames[0].av_diff = mpctx->last_av_difference;
 
     if (resample || mode == VS_DISP_ADROP) {
-        MP_VERBOSE("###8###\n");
+        MP_VERBOSE(mpctx, "###8###\n");
         adjust_audio_resample_speed(mpctx, vsync);
     } else {
-        MP_VERBOSE("###9###\n");
+        MP_VERBOSE(mpctx, "###9###\n");
         mpctx->speed_factor_a = 1.0;
     }
 
