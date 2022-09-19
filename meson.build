@@ -35,8 +35,7 @@ dependencies = [libass,
                 libavutil,
                 libswresample,
                 libswscale,
-                pthreads
-                ]
+                pthreads]
 
 # Keeps track of all enabled/disabled features
 features = {
