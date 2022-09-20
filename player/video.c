@@ -629,29 +629,31 @@ static void update_av_diff(struct MPContext *mpctx, double offset)
 
     mpctx->last_av_difference = 0;
 
-    if (mpctx->video_status != STATUS_PLAYING)
-        return;
+    if (mpctx->video_status != STATUS_PLAYING) return;
 
-    if (mpctx->video_pts == MP_NOPTS_VALUE && mpctx->audio_status != STATUS_PLAYING)
-        return;
+    //当主服务器不为空时，音频停止不应该响应
+    if (mpctx->slave_pts == MP_NOPTS_VALUE && mpctx->audio_status != STATUS_PLAYING) return;
 
-    if (mpctx->vo_chain && mpctx->vo_chain->is_sparse)
-        return;
+    if (mpctx->vo_chain && mpctx->vo_chain->is_sparse) return;
 
+    //当没有主服务器时间
     if (mpctx->slave_pts == MP_NOPTS_VALUE)
     {
         double a_pos = playing_audio_pts(mpctx);
-        if (a_pos != MP_NOPTS_VALUE && mpctx->video_pts != MP_NOPTS_VALUE) {
+        if (a_pos != MP_NOPTS_VALUE && mpctx->video_pts != MP_NOPTS_VALUE) 
+        {
             mpctx->last_av_difference = a_pos - mpctx->video_pts
                 + opts->audio_delay + offset;
         }
     }
+    //有服务器时间
     else if (mpctx->video_pts != MP_NOPTS_VALUE)
+    {
         mpctx->last_av_difference = mpctx->slave_pts - mpctx->video_pts;
-        MP_VERBOSE(mpctx, "After Set slave—time, Do this , last_av_difference = %lf\n", mpctx->last_av_difference);
     }
 
-    if (fabs(mpctx->last_av_difference) > 0.5 && !mpctx->drop_message_shown) {
+    if (fabs(mpctx->last_av_difference) > 0.5 && !mpctx->drop_message_shown) 
+    {
         MP_WARN(mpctx, "%s", av_desync_help_text);
         mpctx->drop_message_shown = true;
     }
