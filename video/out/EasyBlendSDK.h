@@ -51,6 +51,8 @@
 #ifndef _EasyBlendSDK_H_
 #define _EasyBlendSDK_H_
 
+#include <vector>
+
 #include "EasyBlendSDKPlatforms.h"
 
 #include "EasyBlendSDKMesh.h"
@@ -221,6 +223,11 @@ EasyBlendSDK_SetEyepoint(EasyBlendSDK_Mesh* msm,
 EasyBlendSDK_API EasyBlendSDKError 
 EasyBlendSDK_SetGamma(EasyBlendSDK_Mesh* msm, const float gamma, 
                       const int MaxAlpha);
+
+// Description:
+// Sets a lookup table to transform the current alpha channel
+EasyBlendSDK_API EasyBlendSDKError
+EasyBlendSDK_SetLookupTable(EasyBlendSDK_Mesh* msm, const std::vector<int>& lookup);
 
 // Description:
 // Set SDK profiling options. This call has no effect without
