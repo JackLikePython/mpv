@@ -55,7 +55,8 @@ struct priv {
 };
 
 #if defined(Scalable)
-static EasyBlendSDK_Mesh *gMSDK;
+// static EasyBlendSDK_Mesh *gMSDK;
+// static EasyBlendSDKError msdkErr;
 #endif
 
 static void wgl_uninit(struct ra_ctx *ctx);
@@ -251,8 +252,8 @@ static bool compositor_active(struct ra_ctx *ctx)
 static void wgl_swap_buffers(struct ra_ctx *ctx)
 {
     #if defined(Scalable)
-    // EasyBlendSDKError msdkErr = EasyBlendSDK_TransformInputToOutput(gMSDK);
-    // MP_VERBOSE(ctx->vo, "EasyBlendSDK Update = %d.\n", msdkErr);
+    // msdkErr = EasyBlendSDK_TransformInputToOutput(gMSDK);
+    // MP_VERBOSE(ctx->vo, "EasyBlendSDK Update = %s.\n", EasyBlendSDK_GetErrorMessage(msdkErr));
     #endif
 
     struct priv *p = ctx->priv;
@@ -314,9 +315,9 @@ static bool wgl_init(struct ra_ctx *ctx)
     if (!ra_gl_ctx_init(ctx, gl, params))
         goto fail;
     #if defined(Scalable)
-    gMSDK = new EasyBlendSDK_Mesh;
-    EasyBlendSDKError msdkErr = EasyBlendSDK_Initialize("D:\\SVN\\ControlCenterDaemon\\ControlCenterDaemon\\bin\\x64\\Release\\ScalableDataOrthographic.ol", gMSDK);
-    MP_VERBOSE(ctx->vo, "EasyBlendSDK Init = %d.\n", msdkErr);
+    // gMSDK = new EasyBlendSDK_Mesh;
+    // msdkErr = EasyBlendSDK_Initialize("D:\\SVN\\ControlCenterDaemon\\ControlCenterDaemon\\bin\\x64\\Release\\ScalableDataOrthographic.ol", gMSDK);
+    // MP_VERBOSE(ctx->vo, "EasyBlendSDK Init = %s.\n", EasyBlendSDK_GetErrorMessage(msdkErr));
     #endif
     DwmEnableMMCSS(TRUE);
     return true;
@@ -363,9 +364,9 @@ static void wgl_uninit(struct ra_ctx *ctx)
     vo_w32_uninit(ctx->vo);
     
     #if defined(Scalable)
-    // EasyBlendSDKError msdkErr = EasyBlendSDK_Uninitialize(gMSDK);
+    // msdkErr = EasyBlendSDK_Uninitialize(gMSDK);
     // delete gMSDK;
-    // MP_VERBOSE(ctx->vo, "EasyBlendSDK UnInit = %d.\n", msdkErr);
+    // MP_VERBOSE(ctx->vo, "EasyBlendSDK UnInit = %s.\n", EasyBlendSDK_GetErrorMessage(msdkErr));
     #endif
 }
 
