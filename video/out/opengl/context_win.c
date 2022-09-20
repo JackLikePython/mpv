@@ -1,4 +1,4 @@
-#define Scalable
+//#define Scalable
 /*
  * This file is part of mpv.
  *
