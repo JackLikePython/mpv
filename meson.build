@@ -35,8 +35,7 @@ dependencies = [libass,
                 libavutil,
                 libswresample,
                 libswscale,
-                pthreads,
-                cc.find_library('mplEasyBlendSDK', dirs : ['scalable'])
+                pthreads
                 ]
 
 # Keeps track of all enabled/disabled features
