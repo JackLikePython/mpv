@@ -1,4 +1,3 @@
-//#define Scalable
 /*
  * This file is part of mpv.
  *
@@ -25,10 +24,6 @@
 #include "context.h"
 #include "utils.h"
 
-// #if defined(Scalable)
-// #include "scalable/EasyBlendSDK.h"
-// #endif
-
 #if !defined(WGL_CONTEXT_MAJOR_VERSION_ARB)
 /* these are supposed to be defined in wingdi.h but mingw's is too old */
 /* only the bits actually used by mplayer are defined */
@@ -53,10 +48,6 @@ struct priv {
     HGLRC context;
     HDC hdc;
 };
-
-// #if defined(Scalable)
-// static EasyBlendSDK_Mesh *gMSDK;
-// #endif
 
 static void wgl_uninit(struct ra_ctx *ctx);
 
@@ -250,11 +241,6 @@ static bool compositor_active(struct ra_ctx *ctx)
 
 static void wgl_swap_buffers(struct ra_ctx *ctx)
 {
-    // #if defined(Scalable)
-    // EasyBlendSDKError msdkErr = EasyBlendSDK_TransformInputToOutput(gMSDK);
-    // MP_VERBOSE(ctx->vo, "EasyBlendSDK Update = %d.\n", msdkErr);
-    // #endif
-
     struct priv *p = ctx->priv;
     SwapBuffers(p->hdc);
 
@@ -313,11 +299,7 @@ static bool wgl_init(struct ra_ctx *ctx)
 
     if (!ra_gl_ctx_init(ctx, gl, params))
         goto fail;
-    // #if defined(Scalable)
-    // gMSDK = new EasyBlendSDK_Mesh;
-    // EasyBlendSDKError msdkErr = EasyBlendSDK_Initialize("D:\\SVN\\ControlCenterDaemon\\ControlCenterDaemon\\bin\\x64\\Release\\ScalableDataOrthographic.ol", gMSDK);
-    // MP_VERBOSE(ctx->vo, "EasyBlendSDK Init = %d.\n", msdkErr);
-    // #endif
+
     DwmEnableMMCSS(TRUE);
     return true;
 
@@ -361,12 +343,6 @@ static void wgl_uninit(struct ra_ctx *ctx)
 
     DwmEnableMMCSS(FALSE);
     vo_w32_uninit(ctx->vo);
-
-    // #if defined(Scalable)
-    // EasyBlendSDKError msdkErr = EasyBlendSDK_Uninitialize(gMSDK);
-    // delete gMSDK;
-    // MP_VERBOSE(ctx->vo, "EasyBlendSDK UnInit = %d.\n", msdkErr);
-    // #endif
 }
 
 static int wgl_control(struct ra_ctx *ctx, int *events, int request, void *arg)
