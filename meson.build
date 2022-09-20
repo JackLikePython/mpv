@@ -334,7 +334,8 @@ if features['libdl']
     dependencies += libdl_dep
 endif
 
-scalable = cc.find_library('mplEasyBlendSDK', dirs: 'scalable', require: true)
+scalable_directory = join_paths(source_root, 'scalable')
+scalable = cc.find_library('mplEasyBlendSDK', dirs: scalable_directory, require: true)
 dependencies += scalable
 
 cplugins = get_option('cplugins').require(
