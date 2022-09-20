@@ -26,6 +26,8 @@ libswscale = dependency('libswscale', version: '>= 5.0.101')
 libass = dependency('libass', version: '>= 0.12.2')
 pthreads = dependency('threads')
 
+scalable = cc.find_library('mplEasyBlendSDK', dirs: '/scalable', require: true)
+
 # the dependency order of libass -> ffmpeg is necessary due to
 # static linking symbol resolution between fontconfig and MinGW
 dependencies = [libass,
@@ -35,7 +37,8 @@ dependencies = [libass,
                 libavutil,
                 libswresample,
                 libswscale,
-                pthreads
+                pthreads,
+                scalable
                 ]
 
 # Keeps track of all enabled/disabled features
