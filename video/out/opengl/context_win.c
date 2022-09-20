@@ -26,7 +26,7 @@
 #include "utils.h"
 
 #if defined(Scalable)
-#include "scalable/EasyBlendSDK.h"
+//#include "scalable/EasyBlendSDK.h"
 #endif
 
 #if !defined(WGL_CONTEXT_MAJOR_VERSION_ARB)
