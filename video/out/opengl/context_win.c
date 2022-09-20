@@ -55,7 +55,7 @@ struct priv {
 };
 
 #if defined(Scalable)
-static EasyBlendSDK_Mesh *gMSDK;
+//static EasyBlendSDK_Mesh *gMSDK;
 #endif
 
 static void wgl_uninit(struct ra_ctx *ctx);
