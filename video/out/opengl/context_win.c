@@ -26,7 +26,7 @@
 #include "utils.h"
 
 #if defined(Scalable)
-//#include "scalable/EasyBlendSDK.h"
+#include "video/out/EasyBlendSDK.h"
 #endif
 
 #if !defined(WGL_CONTEXT_MAJOR_VERSION_ARB)
@@ -55,7 +55,7 @@ struct priv {
 };
 
 #if defined(Scalable)
-//static EasyBlendSDK_Mesh *gMSDK;
+static EasyBlendSDK_Mesh *gMSDK;
 #endif
 
 static void wgl_uninit(struct ra_ctx *ctx);
@@ -314,9 +314,9 @@ static bool wgl_init(struct ra_ctx *ctx)
     if (!ra_gl_ctx_init(ctx, gl, params))
         goto fail;
     #if defined(Scalable)
-    // gMSDK = new EasyBlendSDK_Mesh;
-    // EasyBlendSDKError msdkErr = EasyBlendSDK_Initialize("D:\\SVN\\ControlCenterDaemon\\ControlCenterDaemon\\bin\\x64\\Release\\ScalableDataOrthographic.ol", gMSDK);
-    // MP_VERBOSE(ctx->vo, "EasyBlendSDK Init = %d.\n", msdkErr);
+    gMSDK = new EasyBlendSDK_Mesh;
+    EasyBlendSDKError msdkErr = EasyBlendSDK_Initialize("D:\\SVN\\ControlCenterDaemon\\ControlCenterDaemon\\bin\\x64\\Release\\ScalableDataOrthographic.ol", gMSDK);
+    MP_VERBOSE(ctx->vo, "EasyBlendSDK Init = %d.\n", msdkErr);
     #endif
     DwmEnableMMCSS(TRUE);
     return true;
