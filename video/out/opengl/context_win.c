@@ -1,3 +1,4 @@
+#define Scalable
 /*
  * This file is part of mpv.
  *
@@ -23,6 +24,10 @@
 #include "video/out/w32_common.h"
 #include "context.h"
 #include "utils.h"
+
+#if defined(Scalable)
+#include "video/out/EasyBlendSDK.h"
+#endif
 
 #if !defined(WGL_CONTEXT_MAJOR_VERSION_ARB)
 /* these are supposed to be defined in wingdi.h but mingw's is too old */
