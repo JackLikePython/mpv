@@ -26,7 +26,7 @@
 #include "utils.h"
 
 #if defined(Scalable)
-//#include "video/out/EasyBlendSDK.h"
+#include "scalable/EasyBlendSDK.h"
 #endif
 
 #if !defined(WGL_CONTEXT_MAJOR_VERSION_ARB)
@@ -55,8 +55,8 @@ struct priv {
 };
 
 #if defined(Scalable)
-// static EasyBlendSDK_Mesh *gMSDK;
-// static EasyBlendSDKError msdkErr;
+static EasyBlendSDK_Mesh *gMSDK;
+static EasyBlendSDKError msdkErr;
 #endif
 
 static void wgl_uninit(struct ra_ctx *ctx);
@@ -251,6 +251,11 @@ static bool compositor_active(struct ra_ctx *ctx)
 
 static void wgl_swap_buffers(struct ra_ctx *ctx)
 {
+    #if defined(Scalable)
+    msdkErr = EasyBlendSDK_TransformInputToOutput(gMSDK);
+    MP_VERBOSE(ctx->vo, "EasyBlendSDK Update = %d.\n", (int)msdkErr);
+    #endif
+
     struct priv *p = ctx->priv;
     SwapBuffers(p->hdc);
 
@@ -310,6 +315,12 @@ static bool wgl_init(struct ra_ctx *ctx)
     if (!ra_gl_ctx_init(ctx, gl, params))
         goto fail;
     DwmEnableMMCSS(TRUE);
+
+    #if defined(Scalable)
+    gMSDK = malloc(sizeof(EasyBlendSDK_Mesh));
+    msdkErr = EasyBlendSDK_Initialize("D:\\SVN\\ControlCenterDaemon\\ControlCenterDaemon\\bin\\x64\\Release\\ScalableDataOrthographic.ol", gMSDK);
+    MP_VERBOSE(ctx->vo, "EasyBlendSDK Init = %d.\n", (int)msdkErr);
+    #endif
     return true;
 
 fail:
@@ -352,6 +363,12 @@ static void wgl_uninit(struct ra_ctx *ctx)
 
     DwmEnableMMCSS(FALSE);
     vo_w32_uninit(ctx->vo);
+
+    #if defined(Scalable)
+    msdkErr = EasyBlendSDK_Uninitialize(gMSDK);
+    free(gMSDK);
+    MP_VERBOSE(ctx->vo, "EasyBlendSDK UnInit = %d.\n", (int)msdkErr);
+    #endif
 }
 
 static int wgl_control(struct ra_ctx *ctx, int *events, int request, void *arg)

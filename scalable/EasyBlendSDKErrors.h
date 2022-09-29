@@ -46,6 +46,6 @@ typedef EasyBlendSDKError MeshSDKError;
 // Description:
 // Returns a string describing an EasyBlendSDKError Code.
 EasyBlendSDK_API const char *
-EasyBlendSDK_GetErrorMessage(const EasyBlendSDKError &error);
+EasyBlendSDK_GetErrorMessage(const EasyBlendSDKError * error);
 
 #endif

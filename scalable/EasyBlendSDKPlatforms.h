@@ -14,7 +14,7 @@
   #ifdef MESHSDK_EXPORTS
   #  define EasyBlendSDK_API extern "C" __declspec(dllexport)
   #else
-  #  define EasyBlendSDK_API extern "C" __declspec(dllimport)
+  #  define EasyBlendSDK_API __declspec(dllimport)
   #endif /* ifdef MESHSDK_EXPORTS */
 #else
   #  define EasyBlendSDK_API extern "C"
