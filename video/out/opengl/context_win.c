@@ -252,8 +252,11 @@ static bool compositor_active(struct ra_ctx *ctx)
 static void wgl_swap_buffers(struct ra_ctx *ctx)
 {
     #if defined(Scalable)
-    msdkErr = EasyBlendSDK_TransformInputToOutput(gMSDK);
-    MP_VERBOSE(ctx->vo, "EasyBlendSDK Update = %d.\n", (int)msdkErr);
+    if (gMSDK) {
+        EasyBlendSDK_TransformInputToOutput(gMSDK);
+        // msdkErr = EasyBlendSDK_TransformInputToOutput(gMSDK);
+        // MP_VERBOSE(ctx->vo, "EasyBlendSDK Update = %s.\n", EasyBlendSDK_GetErrorMessage(&msdkErr));
+    }
     #endif
 
     struct priv *p = ctx->priv;
@@ -318,8 +321,8 @@ static bool wgl_init(struct ra_ctx *ctx)
 
     #if defined(Scalable)
     gMSDK = malloc(sizeof(EasyBlendSDK_Mesh));
-    msdkErr = EasyBlendSDK_Initialize("D:\\SVN\\ControlCenterDaemon\\ControlCenterDaemon\\bin\\x64\\Release\\ScalableDataOrthographic.ol", gMSDK);
-    MP_VERBOSE(ctx->vo, "EasyBlendSDK Init = %d.\n", (int)msdkErr);
+    msdkErr = EasyBlendSDK_Initialize("ScalableDataOrthographic.ol", gMSDK);
+    MP_VERBOSE(ctx->vo, "EasyBlendSDK Init = %s.\n", EasyBlendSDK_GetErrorMessage(&msdkErr));
     #endif
     return true;
 
@@ -365,9 +368,12 @@ static void wgl_uninit(struct ra_ctx *ctx)
     vo_w32_uninit(ctx->vo);
 
     #if defined(Scalable)
-    msdkErr = EasyBlendSDK_Uninitialize(gMSDK);
-    free(gMSDK);
-    MP_VERBOSE(ctx->vo, "EasyBlendSDK UnInit = %d.\n", (int)msdkErr);
+    if (gMSDK) {
+        msdkErr = EasyBlendSDK_Uninitialize(gMSDK);
+        free(gMSDK);
+        MP_VERBOSE(ctx->vo, "EasyBlendSDK UnInit = %s.\n", EasyBlendSDK_GetErrorMessage(&msdkErr));
+        gMSDK = NULL;
+    }
     #endif
 }
 
