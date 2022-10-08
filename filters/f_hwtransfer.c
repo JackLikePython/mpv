@@ -35,6 +35,10 @@ struct priv {
     int *fmt_upload_index;
     int *fmt_upload_num;
 
+    // List of source formats that require hwmap instead of hwupload.
+    int *map_fmts;
+    int num_map_fmts;
+
     struct mp_hwupload public;
 };
 
@@ -58,11 +62,36 @@ static const struct ffmpeg_and_other_bugs shitlist[] = {
     {0}
 };
 
-static bool select_format(struct priv *p, int input_fmt, int *out_sw_fmt,
-                          int *out_upload_fmt)
+struct hwmap_pairs {
+    int first_fmt;
+    int second_fmt;
+};
+
+// We cannot discover which pairs of hardware formats need to use hwmap to
+// convert between the formats, so we need a lookup table.
+static const struct hwmap_pairs hwmap_pairs[] = {
+    {
+        .first_fmt = IMGFMT_VAAPI,
+        .second_fmt = IMGFMT_VULKAN,
+    },
+    {
+        .first_fmt = IMGFMT_DRMPRIME,
+        .second_fmt = IMGFMT_VAAPI,
+    },
+    {0}
+};
+
+static bool select_format(struct priv *p, int input_fmt,
+                          int *out_sw_fmt, int *out_upload_fmt)
 {
     if (!input_fmt)
         return false;
+
+    // If the input format is a hw format, then we shouldn't be doing this
+    // format selection here at all.
+    if (IMGFMT_IS_HWACCEL(input_fmt)) {
+        return false;
+    }
 
     // First find the closest sw fmt. Some hwdec APIs return crazy lists of
     // "supported" formats, which then are not supported or crash (???), so
@@ -104,7 +133,7 @@ int mp_hwupload_find_upload_format(struct mp_hwupload *u, int imgfmt)
 
     int sw = 0, up = 0;
     select_format(p, imgfmt, &sw, &up);
-    return up;
+    return sw;
 }
 
 static void process(struct mp_filter *f)
@@ -125,8 +154,16 @@ static void process(struct mp_filter *f)
     }
     struct mp_image *src = frame.data;
 
-    // As documented, just pass though HW frames.
-    if (IMGFMT_IS_HWACCEL(src->imgfmt)) {
+    /*
+     * Just pass though HW frames in the same format. This shouldn't normally
+     * occur as the upload filter will not be inserted when the formats already
+     * match.
+     *
+     * Technically, we could have frames from different device contexts,
+     * which would require an explicit transfer, but mpv doesn't let you
+     * create that configuration.
+     */
+    if (src->imgfmt == p->hw_imgfmt) {
         mp_pin_in_write(f->ppins[1], frame);
         return;
     }
@@ -137,16 +174,23 @@ static void process(struct mp_filter *f)
     }
 
     if (src->imgfmt != p->last_input_fmt) {
-        if (!select_format(p, src->imgfmt, &p->last_sw_fmt, &p->last_upload_fmt))
-        {
-            MP_ERR(f, "no hw upload format found\n");
-            goto error;
-        }
-        if (src->imgfmt != p->last_upload_fmt) {
-            // Should not fail; if it does, mp_hwupload_find_upload_format()
-            // does not return the src->imgfmt format.
-            MP_ERR(f, "input format not an upload format\n");
-            goto error;
+        if (IMGFMT_IS_HWACCEL(src->imgfmt)) {
+            // Because there cannot be any conversion of the sw format when the
+            // input is a hw format, just pick the source sw format.
+            p->last_sw_fmt = src->params.hw_subfmt;
+        } else {
+            if (!select_format(p, src->imgfmt,
+                               &p->last_sw_fmt, &p->last_upload_fmt))
+            {
+                MP_ERR(f, "no hw upload format found\n");
+                goto error;
+            }
+            if (src->imgfmt != p->last_upload_fmt) {
+                // Should not fail; if it does, mp_hwupload_find_upload_format()
+                // does not return the src->imgfmt format.
+                MP_ERR(f, "input format not an upload format\n");
+                goto error;
+            }
         }
         p->last_input_fmt = src->imgfmt;
         MP_INFO(f, "upload %s -> %s[%s]\n",
@@ -162,7 +206,19 @@ static void process(struct mp_filter *f)
         goto error;
     }
 
-    struct mp_image *dst = mp_av_pool_image_hw_upload(p->hw_pool, src);
+    struct mp_image *dst;
+    bool map_images = false;
+    for (int n = 0; n < p->num_map_fmts; n++) {
+        if (src->imgfmt == p->map_fmts[n]) {
+            map_images = true;
+            break;
+        }
+    }
+
+    if (map_images)
+        dst = mp_av_pool_image_hw_map(p->hw_pool, src);
+    else
+        dst = mp_av_pool_image_hw_upload(p->hw_pool, src);
     if (!dst)
         goto error;
 
@@ -198,10 +254,10 @@ static const struct mp_filter_info hwupload_filter = {
 // So filter out all not explicitly supported formats.
 static bool vo_supports(struct mp_hwdec_ctx *ctx, int hw_fmt, int sw_fmt)
 {
-    if (!ctx->hw_imgfmt)
-        return true; // if unset, all formats are allowed
     if (ctx->hw_imgfmt != hw_fmt)
         return false;
+    if (!ctx->supported_formats)
+        return true; // if unset, all formats are allowed
 
     for (int i = 0; ctx->supported_formats &&  ctx->supported_formats[i]; i++) {
         if (ctx->supported_formats[i] == sw_fmt)
@@ -227,6 +283,12 @@ static bool probe_formats(struct mp_hwupload *u, int hw_imgfmt)
 
     struct mp_hwdec_ctx *ctx = NULL;
     AVHWFramesConstraints *cstr = NULL;
+
+    struct hwdec_imgfmt_request params = {
+        .imgfmt = hw_imgfmt,
+        .probing = true,
+    };
+    hwdec_devices_request_for_img_fmt(info->hwdec_devs, &params);
 
     for (int n = 0; ; n++) {
         struct mp_hwdec_ctx *cur = hwdec_devices_get_n(info->hwdec_devs, n);
@@ -269,6 +331,16 @@ static bool probe_formats(struct mp_hwupload *u, int hw_imgfmt)
         }
     }
 
+    for (int n = 0; hwmap_pairs[n].first_fmt; n++) {
+        if (hwmap_pairs[n].first_fmt == hw_imgfmt) {
+            MP_TARRAY_APPEND(p, p->map_fmts, p->num_map_fmts,
+                             hwmap_pairs[n].second_fmt);
+        } else if (hwmap_pairs[n].second_fmt == hw_imgfmt) {
+            MP_TARRAY_APPEND(p, p->map_fmts, p->num_map_fmts,
+                             hwmap_pairs[n].first_fmt);
+        }
+    }
+
     for (int n = 0; cstr->valid_sw_formats &&
                     cstr->valid_sw_formats[n] != AV_PIX_FMT_NONE; n++)
     {
@@ -292,6 +364,14 @@ static bool probe_formats(struct mp_hwupload *u, int hw_imgfmt)
                 MP_VERBOSE(u->f, "... skipping blacklisted format\n");
                 continue;
             }
+        }
+
+        if (IMGFMT_IS_HWACCEL(imgfmt)) {
+            // If the enumerated format is a hardware format, we don't need to
+            // do any further probing. It will be supported.
+            MP_VERBOSE(u->f, "  supports %s (a hardware format)\n",
+                       mp_imgfmt_to_name(imgfmt));
+            continue;
         }
 
         // Creates an AVHWFramesContexts with the given parameters.

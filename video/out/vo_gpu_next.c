@@ -128,6 +128,7 @@ struct priv {
     struct scaler_params scalers[SCALER_COUNT];
     const struct pl_hook **hooks; // storage for `params.hooks`
     const struct pl_filter_config *frame_mixer;
+    enum mp_csp_levels output_levels;
 
 #ifdef PL_HAVE_LCMS
     struct pl_icc_params icc;
@@ -224,8 +225,8 @@ static struct mp_image *get_image(struct vo *vo, int imgfmt, int w, int h,
 }
 
 static void update_overlays(struct vo *vo, struct mp_osd_res res, double pts,
-                            int flags, struct osd_state *state,
-                            struct pl_frame *frame)
+                            int flags, enum pl_overlay_coords coords,
+                            struct osd_state *state, struct pl_frame *frame)
 {
     struct priv *p = vo->priv;
     static const bool subfmt_all[SUBBITMAP_COUNT] = {
@@ -291,7 +292,7 @@ static void update_overlays(struct vo *vo, struct mp_osd_res res, double pts,
             .num_parts = entry->num_parts,
             .color.primaries = frame->color.primaries,
             .color.transfer = frame->color.transfer,
-            .coords = PL_OVERLAY_COORDS_DST_FRAME,
+            .coords = coords,
         };
 
         // Reject HDR/wide gamut subtitles out of the box, since these are
@@ -730,26 +731,29 @@ static void info_callback(void *priv, const struct pl_render_info *info)
 {
     struct vo *vo = priv;
     struct priv *p = vo->priv;
+    if (info->index > VO_PASS_PERF_MAX)
+        return; // silently ignore clipped passes, whatever
 
-    int index;
     struct mp_frame_perf *frame;
     switch (info->stage) {
-    case PL_RENDER_STAGE_FRAME:
-        if (info->index > VO_PASS_PERF_MAX)
-            return; // silently ignore clipped passes, whatever
-        frame = &p->perf.fresh;
-        index = info->index;
-        break;
-    case PL_RENDER_STAGE_BLEND:
-        frame = &p->perf.redraw;
-        index = 0; // ignore blended frame count
-        break;
+    case PL_RENDER_STAGE_FRAME: frame = &p->perf.fresh; break;
+    case PL_RENDER_STAGE_BLEND: frame = &p->perf.redraw; break;
     default: abort();
     }
 
+    int index = info->index;
+#if PL_API_VER < 227
+    // Versions of libplacebo older than this used `index` to communicate the
+    // blended frame count, and implicitly clipped all subsequent passes. This
+    // functionaliy was removed in API ver 227, which makes `index` behave the
+    // same for frame and blend stages.
+    if (info->stage == PL_RENDER_STAGE_BLEND)
+        index = 0;
+#endif
+
     struct mp_pass_perf *perf = &frame->perf[index];
     const struct pl_dispatch_info *pass = info->pass;
-    assert(VO_PERF_SAMPLE_COUNT >= MP_ARRAY_SIZE(pass->samples));
+    static_assert(VO_PERF_SAMPLE_COUNT >= MP_ARRAY_SIZE(pass->samples), "");
     memcpy(perf->samples, pass->samples, pass->num_samples * sizeof(pass->samples[0]));
     perf->count = pass->num_samples;
     perf->last = pass->last;
@@ -780,6 +784,7 @@ static void update_options(struct vo *vo)
     p->color_adjustment.hue = cparams.hue;
     p->color_adjustment.saturation = cparams.saturation;
     p->color_adjustment.gamma = cparams.gamma;
+    p->output_levels = cparams.levels_out;
 }
 
 static void apply_target_options(struct priv *p, struct pl_frame *target)
@@ -795,6 +800,8 @@ static void apply_target_options(struct priv *p, struct pl_frame *target)
 
     // Colorspace overrides
     const struct gl_video_opts *opts = p->opts_cache->opts;
+    if (p->output_levels)
+        target->repr.levels = mp_levels_to_pl(p->output_levels);
     if (opts->target_prim)
         target->color.primaries = mp_prim_to_pl(opts->target_prim);
     if (opts->target_trc)
@@ -900,10 +907,11 @@ static void draw_frame(struct vo *vo, struct vo_frame *frame)
 
     // Calculate target
     struct pl_frame target;
-    int osd_flags = frame->current ? OSD_DRAW_OSD_ONLY : 0;
     pl_frame_from_swapchain(&target, &swframe);
     apply_target_options(p, &target);
-    update_overlays(vo, p->osd_res, 0, osd_flags, &p->osd_state, &target);
+    update_overlays(vo, p->osd_res, frame->current ? frame->current->pts : 0,
+                    (frame->current && opts->blend_subs) ? OSD_DRAW_OSD_ONLY : 0,
+                    PL_OVERLAY_COORDS_DST_FRAME, &p->osd_state, &target);
     apply_crop(&target, p->dst, swframe.fbo->params.w, swframe.fbo->params.h);
 
     struct pl_frame_mix mix = {0};
@@ -947,11 +955,29 @@ static void draw_frame(struct vo *vo, struct vo_frame *frame)
             struct frame_priv *fp = mpi->priv;
             apply_crop(image, p->src, vo->params->w, vo->params->h);
 
-            if (fp->osd_sync < p->osd_sync) {
-                // Only update the overlays if the state has changed
-                update_overlays(vo, p->osd_res, mpi->pts, OSD_DRAW_SUB_ONLY,
-                                &fp->subs, image);
-                fp->osd_sync = p->osd_sync;
+            if (opts->blend_subs) {
+                if (fp->osd_sync < p->osd_sync) {
+                    // Only update the overlays if the state has changed
+                    float rx = pl_rect_w(p->dst) / pl_rect_w(image->crop);
+                    float ry = pl_rect_h(p->dst) / pl_rect_h(image->crop);
+                    struct mp_osd_res res = {
+                        .w = pl_rect_w(p->dst),
+                        .h = pl_rect_h(p->dst),
+                        .ml = -image->crop.x0 * rx,
+                        .mr = (image->crop.x1 - vo->params->w) * rx,
+                        .mt = -image->crop.y0 * ry,
+                        .mb = (image->crop.y1 - vo->params->h) * ry,
+                        .display_par = 1.0,
+                    };
+                    update_overlays(vo, res, mpi->pts, OSD_DRAW_SUB_ONLY,
+                                    PL_OVERLAY_COORDS_DST_CROP,
+                                    &fp->subs, image);
+                    fp->osd_sync = p->osd_sync;
+                }
+            } else {
+                // Disable overlays when blend_subs is disabled
+                image->num_overlays = 0;
+                fp->osd_sync = 0;
             }
         }
     }
@@ -1117,11 +1143,14 @@ static void video_screenshot(struct vo *vo, struct voctrl_screenshot *args)
     struct mp_rect src = p->src, dst = p->dst;
     struct mp_osd_res osd = p->osd_res;
     if (!args->scaled) {
-        src = dst = (struct mp_rect) {0, 0, mpi->params.w, mpi->params.h};
+        int w = mpi->params.w, h = mpi->params.h;
+        if (mpi->params.rotate % 180 == 90)
+            MPSWAP(int, w, h);
+        src = dst = (struct mp_rect) {0, 0, w, h};
         osd = (struct mp_osd_res) {
-            .w = mpi->params.w,
-            .h = mpi->params.h,
             .display_par = 1.0,
+            .w = w,
+            .h = h,
         };
     }
 
@@ -1170,7 +1199,8 @@ static void video_screenshot(struct vo *vo, struct voctrl_screenshot *args)
         osd_flags |= OSD_DRAW_OSD_ONLY;
     if (!args->osd)
         osd_flags |= OSD_DRAW_SUB_ONLY;
-    update_overlays(vo, osd, mpi->pts, osd_flags, &p->osd_state, &target);
+    update_overlays(vo, osd, mpi->pts, osd_flags, PL_OVERLAY_COORDS_DST_FRAME,
+                    &p->osd_state, &target);
     image.num_overlays = 0; // Disable on-screen overlays
 
     if (!pl_render_image(p->rr, &image, &target, &p->params)) {
@@ -1744,19 +1774,27 @@ static void update_render_options(struct vo *vo)
         p->color_map.gamut_mode = gamut_modes[opts->tone_map.gamut_mode];
 
     switch (opts->dither_algo) {
-    case DITHER_ERROR_DIFFUSION:
-        MP_ERR(p, "Error diffusion dithering is not implemented.\n");
-        // fall through
     case DITHER_NONE:
         p->params.dither_params = NULL;
         break;
+    case DITHER_ERROR_DIFFUSION:
+#if PL_API_VER >= 225
+        p->params.error_diffusion = pl_find_error_diffusion_kernel(opts->error_diffusion);
+        if (!p->params.error_diffusion) {
+            MP_WARN(p, "Could not find error diffusion kernel '%s', falling "
+                    "back to fruit.\n", opts->error_diffusion);
+        }
+#else
+        MP_ERR(p, "Error diffusion dithering is not implemented.\n");
+#endif
+        // fall through
     case DITHER_ORDERED:
     case DITHER_FRUIT:
         p->params.dither_params = &p->dither;
         p->dither = pl_dither_default_params;
-        p->dither.method = opts->dither_algo == DITHER_FRUIT
-                                ? PL_DITHER_BLUE_NOISE
-                                : PL_DITHER_ORDERED_FIXED;
+        p->dither.method = opts->dither_algo == DITHER_ORDERED
+                                ? PL_DITHER_ORDERED_FIXED
+                                : PL_DITHER_BLUE_NOISE;
         p->dither.lut_size = opts->dither_size;
         p->dither.temporal = opts->temporal_dither;
         break;

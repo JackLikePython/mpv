@@ -1264,7 +1264,8 @@ Video
     :dxva2-copy: copies video back to system RAM (Windows only)
     :vdpau:     requires ``--vo=gpu`` with X11, or ``--vo=vdpau`` (Linux only)
     :vdpau-copy: copies video back into system RAM (Linux with some GPUs only)
-    :mediacodec: requires ``--vo=mediacodec_embed`` (Android only)
+    :mediacodec: requires ``--vo=gpu --gpu-context=android``
+                 or ``--vo=mediacodec_embed`` (Android only)
     :mediacodec-copy: copies video back to system RAM (Android only)
     :mmal:      requires ``--vo=gpu`` (Raspberry Pi only - default if available)
     :mmal-copy: copies video back to system RAM (Raspberry Pi only)
@@ -1363,6 +1364,11 @@ Video
 
         ``rpi`` always uses the hardware overlay renderer, even with
         ``--vo=gpu``.
+
+        ``mediacodec`` is not safe. It forces RGB conversion (not with ``-copy``)
+        and how well it handles non-standard colorspaces is not known.
+        In the rare cases where 10-bit is supported the bit depth of the output
+        will be reduced to 8.
 
         ``cuda`` should usually be safe, but depending on how a file/stream
         has been mixed, it has been reported to corrupt the timestamps causing
@@ -3317,7 +3323,7 @@ Window
     On Android, the ID is interpreted as ``android.view.Surface``. Pass it as a
     value cast to ``intptr_t``. Use with ``--vo=mediacodec_embed`` and
     ``--hwdec=mediacodec`` for direct rendering using MediaCodec, or with
-    ``--vo=gpu --gpu-context=android`` (with or without ``--hwdec=mediacodec-copy``).
+    ``--vo=gpu --gpu-context=android`` (with or without ``--hwdec=mediacodec``).
 
 ``--no-window-dragging``
     Don't move the window when clicking on it and moving the mouse pointer.
@@ -5328,7 +5334,7 @@ them.
     cropping and video placement, which always invalidate the cache. Enabling
     this option makes dynamic updates of renderer settings slightly smoother at
     the cost of slightly higher latency in response to such changes. Defaults
-    to on. (Only affects ``--vo=gpu-next``, note that ``-vo=gpu`` always
+    to on. (Only affects ``--vo=gpu-next``, note that ``--vo=gpu`` always
     invalidates interpolated frames)
 
 ``--opengl-pbo``
@@ -5464,11 +5470,6 @@ them.
     set by ``--vulkan-queue-count``), mpv will internally try and prefer the
     use of compute shaders over fragment shaders wherever possible. Enabled by
     default, although Nvidia users may want to disable it.
-
-``--vulkan-disable-events``
-    Disable the use of VkEvents, for debugging purposes or for compatibility
-    with some older drivers / vulkan portability layers that don't provide
-    working VkEvent support.
 
 ``--vulkan-display-display=<n>``
     The index of the display, on the selected Vulkan device, to present on when
@@ -6188,25 +6189,13 @@ them.
     other ways (like with the ``--gamma`` option or key bindings and the
     ``gamma`` property), the value is multiplied with the other gamma value.
 
-    Recommended values based on the environmental brightness:
-
-    1.0
-        Pitch black or dimly lit room (default)
-    1.1
-        Moderately lit room, home
-    1.2
-        Brightly illuminated room, office
-
-    NOTE: This is based around the assumptions of typical movie content, which
-    contains an implicit end-to-end of about 0.8 from scene to display. For
-    bright environments it can be useful to cancel that out.
+    This option is deprecated and may be removed in the future.
 
 ``--gamma-auto``
     Automatically corrects the gamma value depending on ambient lighting
     conditions (adding a gamma boost for bright rooms).
 
-    With ambient illuminance of 16 lux, mpv will pick the 1.0 gamma value (no
-    boost), and slightly increase the boost up until 1.2 for 256 lux.
+    This option is deprecated and may be removed in the future.
 
     NOTE: Only implemented on macOS.
 
@@ -6423,6 +6412,10 @@ them.
         Specifies the local contrast coefficient at the display peak. Defaults
         to 0.5, which means that in-gamut values will be about half as bright
         as when clipping.
+    bt.2390
+        Specifies the offset for the knee point. Defaults to 1.0, which is
+        higher than the value from the original ITU-R specification (0.5).
+        (``--vo=gpu-next`` only)
     gamma
         Specifies the exponent of the function. Defaults to 1.8.
     linear
@@ -6445,7 +6438,7 @@ them.
     allows no additional brightness boost. A value of 2.0 would allow
     over-exposing by a factor of 2, and so on. Raising this setting can help
     reveal details that would otherwise be hidden in dark scenes, but raising
-    it too high will make dark scenes appear unnaturally bright. (``-vo=gpu``
+    it too high will make dark scenes appear unnaturally bright. (``--vo=gpu``
     only)
 
 ``--tone-mapping-mode``
@@ -7010,7 +7003,7 @@ Miscellaneous
     that are unavailable to outside users.
 
     This replaces ``--record-file``. It is similar to the ancient/removed
-    ``--stream-capture``/``-capture`` options, and provides better behavior in
+    ``--stream-capture``/``--capture`` options, and provides better behavior in
     most cases (i.e. actually works).
 
 ``--lavfi-complex=<string>``
