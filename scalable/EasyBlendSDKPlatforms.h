@@ -12,7 +12,7 @@
 
 #if  !defined(_EASYBLENDSDK_LINUX) && !defined(_EASYBLENDSDK_STATIC) 
   #ifdef MESHSDK_EXPORTS
-  #  define EasyBlendSDK_API extern "C" __declspec(dllexport)
+  #  define EasyBlendSDK_API __declspec(dllexport)
   #else
   #  define EasyBlendSDK_API __declspec(dllimport)
   #endif /* ifdef MESHSDK_EXPORTS */

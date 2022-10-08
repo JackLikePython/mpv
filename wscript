@@ -891,7 +891,11 @@ standalone_features = [
         'desc': 'macOS libmpv backend',
         'deps': 'cocoa && swift',
         'func': check_true
-    }
+    }, {
+        'name': 'scalable easyblend sdk',
+        'desc': 'scalable easyblend sdk',
+        'func': check_cc(lib='mplEasyBlendSDK')
+    },
 ]
 
 _INSTALL_DIRS_LIST = [

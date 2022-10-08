@@ -323,6 +323,9 @@ static bool wgl_init(struct ra_ctx *ctx)
     gMSDK = malloc(sizeof(EasyBlendSDK_Mesh));
     msdkErr = EasyBlendSDK_Initialize("ScalableDataOrthographic.ol", gMSDK);
     MP_VERBOSE(ctx->vo, "EasyBlendSDK Init = %s.\n", EasyBlendSDK_GetErrorMessage(&msdkErr));
+    if (msdkErr != EasyBlendSDK_ERR_S_OK){
+        free(gMSDK); gMSDK = NULL;
+    }
     #endif
     return true;
 
