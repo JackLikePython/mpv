@@ -54,9 +54,13 @@ struct priv {
     struct pw_core *core;
     struct spa_hook stream_listener;
 
-    int buffer_msec;
     bool muted;
     float volume[2];
+
+    struct {
+        int buffer_msec;
+        char *remote;
+    } options;
 
     struct {
         struct pw_registry *registry;
@@ -134,7 +138,7 @@ static void on_process(void *userdata)
     void *data[MP_NUM_CHANNELS];
 
     if ((b = pw_stream_dequeue_buffer(p->stream)) == NULL) {
-        MP_WARN(ao, "out of buffers: %m\n");
+        MP_WARN(ao, "out of buffers: %s\n", strerror(errno));
         return;
     }
 
@@ -380,35 +384,6 @@ unlock_loop:
     return ret;
 }
 
-
-static void get_target_id_cb(struct ao *ao, uint32_t id, const struct spa_dict *props, void *ctx)
-{
-    int32_t *target_id = ctx;
-
-    const char *name = spa_dict_lookup(props, PW_KEY_NODE_NAME);
-    if (!name)
-        return;
-
-    if (strcmp(name, ao->device) == 0) {
-        *target_id = id;
-    }
-}
-
-static uint32_t get_target_id(struct ao *ao)
-{
-    uint32_t target_id = 0;
-
-    if (ao->device == NULL)
-        return PW_ID_ANY;
-
-    if (for_each_sink(ao, get_target_id_cb, &target_id) < 0 && target_id == 0) {
-        MP_WARN(ao, "Could not iterate devices to find target, using default device\n");
-        return PW_ID_ANY;
-    }
-
-    return target_id;
-}
-
 static int pipewire_init_boilerplate(struct ao *ao)
 {
     struct priv *p = ao->priv;
@@ -419,9 +394,10 @@ static int pipewire_init_boilerplate(struct ao *ao)
 
 
     p->loop = pw_thread_loop_new("ao-pipewire", NULL);
-    pw_thread_loop_lock(p->loop);
     if (p->loop == NULL)
-        goto error;
+        return -1;
+
+    pw_thread_loop_lock(p->loop);
 
     if (pw_thread_loop_start(p->loop) < 0)
         goto error;
@@ -430,9 +406,15 @@ static int pipewire_init_boilerplate(struct ao *ao)
     if (!context)
         goto error;
 
-    p->core = pw_context_connect(context, NULL, 0);
-    if (!p->core)
+    p->core = pw_context_connect(
+            context,
+            pw_properties_new(PW_KEY_REMOTE_NAME, p->options.remote, NULL),
+            0);
+    if (!p->core) {
+        MP_WARN(ao, "Could not connect to context '%s': %s\n",
+                p->options.remote, strerror(errno));
         goto error;
+    }
 
     ret = 0;
 
@@ -461,13 +443,14 @@ static int init(struct ao *ao)
         PW_KEY_APP_ID, ao->client_name,
         PW_KEY_APP_ICON_NAME, ao->client_name,
         PW_KEY_NODE_ALWAYS_PROCESS, "true",
+        PW_KEY_TARGET_OBJECT, ao->device,
         NULL
     );
 
     if (pipewire_init_boilerplate(ao) < 0)
         goto error;
 
-    ao->device_buffer = p->buffer_msec * ao->samplerate / 1000;
+    ao->device_buffer = p->options.buffer_msec * ao->samplerate / 1000;
 
     pw_properties_setf(props, PW_KEY_NODE_LATENCY, "%d/%d", ao->device_buffer, ao->samplerate);
     pw_properties_setf(props, PW_KEY_NODE_RATE, "1/%d", ao->samplerate);
@@ -514,17 +497,8 @@ static int init(struct ao *ao)
                     &p->stream_listener,
                     &stream_events, ao);
 
-    pw_thread_loop_unlock(p->loop);
-
-    uint32_t target_id = get_target_id(ao);
-    if (target_id == 0)
-        goto error;
-
-    pw_thread_loop_lock(p->loop);
-
     if (pw_stream_connect(p->stream,
-                    PW_DIRECTION_OUTPUT,
-                    target_id,
+                    PW_DIRECTION_OUTPUT, PW_ID_ANY,
                     PW_STREAM_FLAG_AUTOCONNECT |
                     PW_STREAM_FLAG_INACTIVE |
                     PW_STREAM_FLAG_MAP_BUFFERS |
@@ -697,9 +671,8 @@ static void hotplug_registry_global_remove_cb(void *data, uint32_t id)
 done:
     pw_thread_loop_unlock(priv->loop);
 
-    if (removed_sink) {
+    if (removed_sink)
         ao_hotplug_event(ao);
-    }
 }
 
 static const struct pw_registry_events hotplug_registry_events = {
@@ -785,11 +758,12 @@ const struct ao_driver audio_out_pipewire = {
     {
         .loop = NULL,
         .stream = NULL,
-        .buffer_msec = 20,
+        .options.buffer_msec = 20,
     },
     .options_prefix = "pipewire",
     .options = (const struct m_option[]) {
-        {"buffer", OPT_INT(buffer_msec), M_RANGE(1, 2000)},
+        {"buffer", OPT_INT(options.buffer_msec), M_RANGE(1, 2000)},
+        {"remote", OPT_STRING(options.remote) },
         {0}
     },
 };
