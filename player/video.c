@@ -810,7 +810,7 @@ static void handle_display_sync_frame(struct MPContext *mpctx,
 {
     struct MPOpts *opts = mpctx->opts;
     struct vo *vo = mpctx->video_out;
-    vo->opts->video_sync = VS_DISP_RESAMPLE_VDROP;
+    vo->opts->video_sync = VS_DISP_VDROP;
     int mode = vo->opts->video_sync;
 
     if (!mpctx->display_sync_active) {
