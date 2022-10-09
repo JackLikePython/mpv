@@ -650,7 +650,7 @@ static void update_av_diff(struct MPContext *mpctx, double offset)
     else if (mpctx->video_pts != MP_NOPTS_VALUE)
     {
         mpctx->last_av_difference = mpctx->slave_pts - mpctx->video_pts
-            + offset;
+            + opts->audio_delay + offset;
     }
 
     if (fabs(mpctx->last_av_difference) > 0.5 && !mpctx->drop_message_shown) 
