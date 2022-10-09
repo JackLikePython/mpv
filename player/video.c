@@ -650,7 +650,7 @@ static void update_av_diff(struct MPContext *mpctx, double offset)
     else if (mpctx->video_pts != MP_NOPTS_VALUE)
     {
         mpctx->last_av_difference = mpctx->slave_pts - mpctx->video_pts
-            + opts->audio_delay + offset;
+            + offset;
     }
 
     if (fabs(mpctx->last_av_difference) > 0.5 && !mpctx->drop_message_shown) 
@@ -810,7 +810,7 @@ static void handle_display_sync_frame(struct MPContext *mpctx,
 {
     struct MPOpts *opts = mpctx->opts;
     struct vo *vo = mpctx->video_out;
-    vo->opts->video_sync = VS_DISP_RESAMPLE;
+    vo->opts->video_sync = VS_DISP_RESAMPLE_VDROP;
     int mode = vo->opts->video_sync;
 
     if (!mpctx->display_sync_active) {
