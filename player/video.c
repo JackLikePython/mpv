@@ -644,6 +644,7 @@ static void update_av_diff(struct MPContext *mpctx, double offset)
         {
             mpctx->last_av_difference = a_pos - mpctx->video_pts
                 + opts->audio_delay + offset;
+            opts->audio_delay = 0;
         }
     }
     //有服务器时间
