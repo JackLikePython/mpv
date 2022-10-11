@@ -644,14 +644,17 @@ static void update_av_diff(struct MPContext *mpctx, double offset)
         {
             mpctx->last_av_difference = a_pos - mpctx->video_pts
                 + opts->audio_delay + offset;
-            opts->audio_delay = 0;
         }
     }
     //有服务器时间
     else if (mpctx->video_pts != MP_NOPTS_VALUE)
     {
-        mpctx->last_av_difference = mpctx->slave_pts - mpctx->video_pts
-            + offset;
+        double a_pos = playing_audio_pts(mpctx);
+        if (a_pos != MP_NOPTS_VALUE && mpctx->video_pts != MP_NOPTS_VALUE) 
+        {
+            mpctx->last_av_difference = a_pos - mpctx->video_pts
+                + opts->audio_delay + offset + mpctx->slave_pts;
+        }
     }
 
     if (fabs(mpctx->last_av_difference) > 0.5 && !mpctx->drop_message_shown) 

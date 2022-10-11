@@ -794,43 +794,12 @@ static int mp_property_slave_time(void *ctx, struct m_property *prop,
     switch (action) {
         case M_PROPERTY_SET: {
             double pos = *(double *)arg;
-            mpctx->slave_pts = pos;
+            mpctx->slave_pts = pos - playing_audio_pts(mpctx);
             return M_PROPERTY_OK;
         }
         case M_PROPERTY_GET: {
-            double pos = mpctx->slave_pts;
+            double pos = playing_audio_pts(mpctx);
             *(double *)arg = pos;
-            return M_PROPERTY_OK;
-        }
-        case M_PROPERTY_GET_TYPE: {
-            struct m_option time_type = {.type = CONF_TYPE_DOUBLE};
-            *(struct m_option *)arg = time_type;
-            return M_PROPERTY_OK;
-        }
-        case M_PROPERTY_PRINT: {
-            double pos = *(double *)arg;
-            *(char **)arg = talloc_asprintf(NULL, "%lf", pos);
-            return M_PROPERTY_OK;
-        }
-    }
-    return M_PROPERTY_NOT_IMPLEMENTED;
-}
-
-static int mp_property_sync_time(void *ctx, struct m_property *prop,
-                                      int action, void *arg)
-{
-    MPContext *mpctx = ctx;
-
-    if (!mpctx->playback_initialized)
-        return M_PROPERTY_UNAVAILABLE;
-
-    switch (action) {
-        case M_PROPERTY_SET: {
-            return M_PROPERTY_OK;
-        }
-        case M_PROPERTY_GET: {
-            double a_pos = playing_audio_pts(mpctx);
-            *(double *)arg = a_pos;
             return M_PROPERTY_OK;
         }
         case M_PROPERTY_GET_TYPE: {
@@ -3650,7 +3619,6 @@ static const struct m_property mp_properties_base[] = {
     {"time-start", mp_property_time_start},
     {"time-pos", mp_property_time_pos},
     {"slave-time", mp_property_slave_time},
-    {"sync-time", mp_property_sync_time},
     {"time-remaining", mp_property_remaining},
     {"audio-pts", mp_property_audio_pts},
     {"playtime-remaining", mp_property_playtime_remaining},
